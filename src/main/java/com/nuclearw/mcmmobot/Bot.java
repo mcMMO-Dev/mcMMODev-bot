@@ -27,25 +27,35 @@ public class Bot extends PircBot {
 	private static final String ghBase = "https://api.github.com/repos/mcMMO-Dev/mcMMO/";
 	private static final String jenkinsBase = "http://ci.mcmmo.info/job/mcMMO/";
 
-	public Bot() {
-		this.setName(Config.nick);
+	public static final String MCMMO_DEV = "mcmmodev";
+	public static final String MCMMO = "mcmmo";
+
+	//public static final String MCMMO = "turt2live";
+	//public static final String MCMMO_DEV = "turt2live";
+
+	public Bot(){
+		setName(Config.nick);
 	}
 
 	@Override
-	protected void onTopic(String channel, String topic, String setBy, long date, boolean changed) {
-		if(channel.contains("mcmmodev")) {
+	protected void onTopic(String channel, String topic, String setBy, long date, boolean changed){
+		if(channel.contains(MCMMO_DEV)){
 			Bot.topic = topic;
-			if(!started) {
+			if(!started){
 				Main.daysTask.start();
 				started = true;
+				//sendMessage("nickserv", "identify pwgoeshere"); //  turt2live
+				if(!Config.countInDays){
+					sendMessage("#" + MCMMO_DEV, "DEBUG MODE (kinda): COUNTING IN SECONDS");
+				}
 			}
 		}
 	}
 
 	@Override
-	protected void onMessage(String channel, String sender, String login, String hostname, String message) {
-		if(channel.contains("mcmmodev")) {
-			if(message.equalsIgnoreCase(".reset")) {
+	protected void onMessage(String channel, String sender, String login, String hostname, String message){
+		if(channel.contains(MCMMO_DEV)){
+			if(message.equalsIgnoreCase(".reset")){
 				String topic = Bot.topic;
 
 				System.out.println("Topic: " + topic);
@@ -58,74 +68,74 @@ public class Bot extends PircBot {
 
 				topic = matcher.replaceAll(newDays + " days");
 
-				setTopic("#mcmmodev", topic);
+				setTopic("#" + MCMMO_DEV, topic);
 
-				try {
+				try{
 					Main.writeReset(System.currentTimeMillis());
-				} catch (IOException e) {
+				}catch(IOException e){
 					e.printStackTrace();
 				}
 			}
 		}
 
-		if(channel.equalsIgnoreCase("#mcmmo") || channel.equalsIgnoreCase("#mcmmodev")) {
-			try {
+		if(channel.equalsIgnoreCase("#" + MCMMO) || channel.equalsIgnoreCase("#" + MCMMO_DEV)){
+			try{
 				Set<Matcher> matchers = new HashSet<Matcher>();
 				matchers.add(Pattern.compile("![0-9]+").matcher(message));
 				matchers.add(Pattern.compile("github.com/mcMMO-Dev/mcMMO/issues/[0-9]+").matcher(message));
 
-				for(Matcher matcher : matchers) {
-					while(matcher.find()) {
-						try {
+				for(Matcher matcher : matchers){
+					while (matcher.find()){
+						try{
 							String issue = message.substring(matcher.start(), matcher.end());
 							String returnMessage = issueMessage(issue);
 
 							sendMessage(channel, returnMessage);
-						} catch (Exception ex) { }
+						}catch(Exception ex){}
 					}
 				}
-			} catch (Exception ex) { }
+			}catch(Exception ex){}
 
-			if(message.toLowerCase().equals("!issues")) {
+			if(message.toLowerCase().equals("!issues")){
 				sendMessage(channel, "https://github.com/mcMMO-Dev/mcMMO/issues");
 			}
 
-			try {
+			try{
 				Set<Matcher> matchers = new HashSet<Matcher>();
 				matchers.add(Pattern.compile("!ch ([0-9]+)((?: )?[0-9]*)").matcher(message));
 
-				for(Matcher matcher : matchers) {
-					while(matcher.find()) {
-						try {
+				for(Matcher matcher : matchers){
+					while (matcher.find()){
+						try{
 							String match = message.substring(matcher.start(), matcher.end());
 							Matcher number = Pattern.compile("[0-9]+").matcher(match);
 							number.find();
 							Integer startBuild = Integer.parseInt(match.substring(number.start(), number.end()));
 							Integer endBuild = null;
-							if(number.find()) {
+							if(number.find()){
 								endBuild = Integer.parseInt(match.substring(number.start(), number.end()));
 							}
 
 							// First round to try to get info from Jenkins
-							if(!Main.builds.containsKey(startBuild)) {
-								try {
+							if(!Main.builds.containsKey(startBuild)){
+								try{
 									tryFetchBuild(startBuild);
-								} catch(Exception e) { }
+								}catch(Exception e){}
 							}
-							
-							if(endBuild != null && !Main.builds.containsKey(endBuild)) {
-								try {
+
+							if(endBuild != null && !Main.builds.containsKey(endBuild)){
+								try{
 									tryFetchBuild(endBuild);
-								} catch(Exception e) { }
+								}catch(Exception e){}
 							}
 
 							// Second round after we tried to get info from Jenkins
-							if(!Main.builds.containsKey(startBuild)) {
+							if(!Main.builds.containsKey(startBuild)){
 								sendMessage(channel, "I don't have any information on build #" + startBuild);
 								return;
 							}
 
-							if(endBuild != null && !Main.builds.containsKey(endBuild)) {
+							if(endBuild != null && !Main.builds.containsKey(endBuild)){
 								sendMessage(channel, "I don't have any information on build #" + startBuild);
 								return;
 							}
@@ -133,48 +143,49 @@ public class Bot extends PircBot {
 							String base = "https://github.com/mcMMO-Dev/mcMMO/compare/";
 							base += Main.builds.get(startBuild);
 							base += "...";
-							if(endBuild != null) {
+							if(endBuild != null){
 								base += Main.builds.get(endBuild);
-							} else {
+							}else{
 								base += "master";
 							}
 
 							String shortUrl = shortenUrl(base);
 
 							sendMessage(channel, "Changes: " + shortUrl);
-							
-						} catch (Exception ex) { }
+
+						}catch(Exception ex){}
 					}
 				}
-			} catch (Exception ex) { }
+			}catch(Exception ex){}
 		}
 	}
 
-	private static void tryFetchBuild(Integer build) throws IOException, JSONException {
+	private static void tryFetchBuild(Integer build) throws IOException, JSONException{
 		JSONObject main = readJsonFromUrl(jenkinsBase + build + "/api/json?tree=actions[lastBuiltRevision[SHA1]]");
 		JSONArray array = main.getJSONArray("actions");
 		String sha = "";
-		for(int i = 0; i < array.length(); i++) {
+		for(int i = 0; i < array.length(); i++){
 			JSONObject iObject = array.getJSONObject(i);
-			if(iObject.has("lastBuiltRevision")) {
+			if(iObject.has("lastBuiltRevision")){
 				sha = iObject.getJSONObject("lastBuiltRevision").getString("SHA1");
 				break;
 			}
 		}
-		if(!sha.isEmpty()) {
+		if(!sha.isEmpty()){
 			System.out.println(build + " " + sha);
 			Main.addBuild(build, sha);
 		}
 	}
 
-	private static String issueMessage(String issue) throws IOException, JSONException {
+	private static String issueMessage(String issue) throws IOException, JSONException{
 		Matcher matcher = Pattern.compile("[0-9]+").matcher(issue);
-		if(matcher.find()) {
+		if(matcher.find()){
 			issue = issue.substring(matcher.start(), matcher.end());
 		}
 
 		int issueNumber = Integer.valueOf(issue);
-		if(issueNumber <= 0) return null;
+		if(issueNumber <= 0)
+			return null;
 
 		JSONObject main = readJsonFromUrl(ghBase + "issues/" + issueNumber);
 		String url = main.getString("html_url");
@@ -185,7 +196,7 @@ public class Bot extends PircBot {
 		return "Issue #" + issueNumber + ": " + shortUrl + " - " + title;
 	}
 
-	private static String shortenUrl(String url) throws JSONException {
+	private static String shortenUrl(String url) throws JSONException{
 		JSONObject request = new JSONObject();
 		request.append("longUrl", url);
 
@@ -195,23 +206,23 @@ public class Bot extends PircBot {
 		return response.getString("id");
 	}
 
-	private static String readAll(Reader rd) throws IOException {
+	private static String readAll(Reader rd) throws IOException{
 		StringBuilder sb = new StringBuilder();
 		int cp;
-		while ((cp = rd.read()) != -1) {
+		while ((cp = rd.read()) != -1){
 			sb.append((char) cp);
 		}
 		return sb.toString();
 	}
 
-	public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
+	public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException{
 		InputStream is = new URL(url).openStream();
-		try {
+		try{
 			BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
 			String jsonText = readAll(rd);
 			JSONObject json = new JSONObject(jsonText);
 			return json;
-		} finally {
+		}finally{
 			is.close();
 		}
 	}
@@ -219,16 +230,16 @@ public class Bot extends PircBot {
 	public static String executePost(String targetURL, String urlParameters)
 	{
 		URL url;
-		HttpURLConnection connection = null;	
-		try {
+		HttpURLConnection connection = null;
+		try{
 			//Create connection
 			url = new URL(targetURL);
-			connection = (HttpURLConnection)url.openConnection();
+			connection = (HttpURLConnection) url.openConnection();
 			connection.setRequestMethod("POST");
 			connection.setRequestProperty("Content-Type", "application/json");
 
 			connection.setRequestProperty("Content-Length", "" + Integer.toString(urlParameters.getBytes().length));
-			connection.setRequestProperty("Content-Language", "en-US");	
+			connection.setRequestProperty("Content-Language", "en-US");
 
 			connection.setUseCaches(false);
 			connection.setDoInput(true);
@@ -244,19 +255,19 @@ public class Bot extends PircBot {
 			InputStream is = connection.getInputStream();
 			BufferedReader rd = new BufferedReader(new InputStreamReader(is));
 			String line;
-			StringBuffer response = new StringBuffer(); 
-			while((line = rd.readLine()) != null) {
+			StringBuffer response = new StringBuffer();
+			while ((line = rd.readLine()) != null){
 				response.append(line);
 				response.append('\r');
 			}
 			rd.close();
 			return response.toString();
-		} catch (Exception e) {
+		}catch(Exception e){
 			e.printStackTrace();
 			return null;
-		} finally {
-			if(connection != null) {
-				connection.disconnect(); 
+		}finally{
+			if(connection != null){
+				connection.disconnect();
 			}
 		}
 	}

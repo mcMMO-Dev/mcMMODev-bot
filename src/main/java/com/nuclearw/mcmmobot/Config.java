@@ -14,7 +14,10 @@ public class Config {
 
 	public static boolean ssl;
 
-	public static void load() {
+	// Defaults to seconds otherwise
+	public static boolean countInDays = true;
+
+	public static void load(){
 		// TODO: Load
 		/**/
 		prefix = "`";
@@ -27,5 +30,12 @@ public class Config {
 
 		channels = new ArrayList<String>();
 		channels.add("#mcmmodev");
+
+		// Turt2Live settings
+		//		ssl = false;
+		//		nick = "mcMMO-t2l";
+		//		channels.add("#turt2live");
+		//		countInDays = false;
+		//		host = "chaos.esper.net";
 	}
 }
