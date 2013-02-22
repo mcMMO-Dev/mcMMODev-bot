@@ -62,8 +62,13 @@
     </build>
     <repositories>
         <repository>
-        	<id>maven-repo</id>
-        	<url>http://repo1.maven.org/maven2/</url>
+            <id>maven-repo</id>
+            <url>http://repo1.maven.org/maven2/</url>
+        </repository>
+        <!-- For pircbot, in case it goes missing -->
+        <repository>
+            <id>turt2live-repo</id>
+            <url>http://repo.turt2live.com</url>
         </repository>
     </repositories>
     <dependencies>
